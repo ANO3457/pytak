@@ -1,0 +1,56 @@
+name: Validate netcat troubleshooting documentation
+on:
+  push:
+    branches: ['validation/codex23-pytak62']
+permissions:
+  contents: read
+jobs:
+  docs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: sudo apt-get update -qq && sudo apt-get install -y netcat-openbsd
+      - run: python -m pip install -e . -r docs/requirements.txt
+      - name: Run exact documented TCP and UDP commands
+        run: |
+          python - <<'CHECK'
+          import os, re, subprocess, tempfile, time
+          from pathlib import Path
+          from xml.etree import ElementTree as ET
+          text = Path('docs/troubleshooting.md').read_text()
+          blocks = re.findall(r'```sh\n(.*?)```', text, re.S)
+          generator = next(b for b in blocks if b.startswith("python3 - <<'PY'"))
+          with tempfile.TemporaryDirectory() as tmp:
+              root = Path(tmp)
+              subprocess.run(['bash', '-c', generator], cwd=root, check=True)
+              expected = ET.fromstring((root / 'events.xml').read_bytes())
+              assert expected.attrib['uid'] == 'netcat-test'
+              for udp in [False, True]:
+                  listen = 'nc -u -l 127.0.0.1 6969' if udp else 'nc -l 127.0.0.1 4242'
+                  send = 'pytak --tx-only --tx-file events.xml ' + ('udp+wo://127.0.0.1:6969' if udp else 'tcp://127.0.0.1:4242')
+                  assert any(b.strip() == listen for b in blocks)
+                  assert any(b.strip() == send for b in blocks)
+                  capture = root / ('udp.xml' if udp else 'tcp.xml')
+                  with capture.open('wb') as output:
+                      listener = subprocess.Popen(listen.split(), stdout=output, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
+                      try:
+                          time.sleep(0.3)
+                          assert listener.poll() is None, listener.stderr.read().decode()
+                          result = subprocess.run(send.split(), cwd=root, stdin=subprocess.DEVNULL, capture_output=True, timeout=30)
+                          assert result.returncode == 0, (result.stdout, result.stderr)
+                          for _ in range(100):
+                              if b'</event>' in capture.read_bytes(): break
+                              time.sleep(0.05)
+                          received = ET.fromstring(capture.read_bytes().strip())
+                          assert ET.tostring(received) == ET.tostring(expected)
+                          print('PASS: exact documented commands and event bytes:', listen, '|', send, flush=True)
+                      finally:
+                          if listener.poll() is None: listener.terminate()
+                          listener.wait(timeout=5)
+          CHECK
+      - name: Build documentation
+        run: mkdocs build --strict
