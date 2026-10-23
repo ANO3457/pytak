@@ -21,6 +21,7 @@ jobs:
           import os, re, signal, subprocess, tempfile, time
           from pathlib import Path
           from xml.etree import ElementTree as ET
+          from pytak.cli_main import _frame_cot_xml_events
           text = Path('docs/troubleshooting.md').read_text()
           blocks = re.findall(r'```sh\n(.*?)```', text, re.S)
           generator = next(b for b in blocks if b.startswith("python3 - <<'PY'"))
@@ -43,10 +44,12 @@ jobs:
                           sender = subprocess.Popen(send.split(), cwd=root, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                           try:
                               for _ in range(200):
-                                  if b'</event>' in capture.read_bytes(): break
+                                  frames, _ = _frame_cot_xml_events(capture.read_bytes())
+                                  matches = [ET.fromstring(f) for f in frames if b'uid="netcat-test"' in f]
+                                  if matches: break
                                   if sender.poll() is not None: break
                                   time.sleep(0.05)
-                              assert b'</event>' in capture.read_bytes(), 'no event arrived'
+                              assert matches, 'no test event arrived'
                               sender.send_signal(signal.SIGINT)
                               out, err = sender.communicate(timeout=10)
                               assert sender.returncode == 0, (out, err)
@@ -54,7 +57,7 @@ jobs:
                               if sender.poll() is None:
                                   sender.kill()
                                   sender.wait(timeout=5)
-                          received = ET.fromstring(capture.read_bytes().strip())
+                          received = matches[0]
                           assert ET.tostring(received) == ET.tostring(expected)
                           print('PASS: exact documented commands and event bytes:', listen, '|', send, flush=True)
                       finally:
