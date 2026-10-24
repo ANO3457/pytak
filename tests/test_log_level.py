@@ -25,9 +25,13 @@ def log_output(monkeypatch):
 
 
 def make_worker(kind, config):
-    if kind == "Worker":
-        return pytak.Worker(asyncio.Queue(), config)
-    return pytak.CLITool(config)
+    async def construct():
+        # Older asyncio.Queue versions need a current event loop at construction.
+        if kind == "Worker":
+            return pytak.Worker(asyncio.Queue(), config)
+        return pytak.CLITool(config)
+
+    return asyncio.run(construct())
 
 
 @pytest.mark.parametrize("kind", ["Worker", "CLITool"])
