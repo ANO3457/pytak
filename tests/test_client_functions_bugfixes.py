@@ -439,33 +439,6 @@ def test_cli_tolerates_env_vars_differing_only_by_case(monkeypatch, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_protocol_factory_tcp_passes_stream_limit():
-    """protocol_factory TCP must pass configured or default stream_limit to open_connection."""
-    mock_reader = mock.MagicMock()
-    mock_writer = mock.MagicMock()
-
-    with mock.patch(
-        "asyncio.open_connection", return_value=(mock_reader, mock_writer)
-    ) as mock_open:
-        config = {"COT_URL": "tcp://127.0.0.1:8087", "STREAM_LIMIT": "1048576"}
-        reader, writer = await pytak.protocol_factory(config)
-        assert reader is mock_reader
-        assert writer is mock_writer
-        mock_open.assert_called_once_with("127.0.0.1", 8087, limit=1048576)
-
-    with mock.patch(
-        "asyncio.open_connection", return_value=(mock_reader, mock_writer)
-    ) as mock_open:
-        config_default = {"COT_URL": "tcp://127.0.0.1:8087"}
-        reader, writer = await pytak.protocol_factory(config_default)
-        assert reader is mock_reader
-        assert writer is mock_writer
-        mock_open.assert_called_once_with(
-            "127.0.0.1", 8087, limit=pytak.DEFAULT_STREAM_LIMIT
-        )
-
-
-@pytest.mark.asyncio
 @pytest.mark.parametrize("configured_limit", [None, "131072", "256"])
 async def test_tcp_stream_limit_with_real_large_event(configured_limit):
     """A real TCP reader accepts large events or enforces an explicit small limit."""
