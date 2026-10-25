@@ -1,3 +1,4 @@
+.vscode/
 *.deb
 *.egg
 *.egg-info/
@@ -17,7 +18,6 @@
 .pt
 .vagrant/
 RELEASE-VERSION.txt
-temp_auto_push.bat
 build/
 deb_dist/
 cover/
@@ -37,5 +37,3 @@ site/
 __pycache__
 .ipynb_checkpoints/
 config.ini
-.gitignore
-branch_structure.json
