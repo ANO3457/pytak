@@ -123,7 +123,8 @@ TAK Protocol version for CoT output:
 StreamReader buffer limit in bytes for both TCP and TLS connections. Increase it
 when a complete CoT event, such as an image attachment, exceeds the current limit;
 set a smaller positive value to use a smaller reader limit. This sets a limit rather than allocating the whole buffer at connection
-startup.
+startup. The RXWorker per-event limit remains 64 MiB and is enforced separately,
+including when the reader buffer is larger.
 
 ```ini
 STREAM_LIMIT = 1048576
