@@ -1110,7 +1110,7 @@ async def create_tls_client(
     else:
         expected_server_hostname = None
 
-    stream_limit = int(tls_config.get("STREAM_LIMIT", pytak.DEFAULT_STREAM_LIMIT))
+    stream_limit = int(config.get("STREAM_LIMIT", pytak.DEFAULT_STREAM_LIMIT))
     try:
         reader, writer = await asyncio.open_connection(
             host.strip("[]"),

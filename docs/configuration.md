@@ -116,6 +116,21 @@ TAK Protocol version for CoT output:
 
 ---
 
+### `STREAM_LIMIT`
+
+**Default:** `4294967296` (4 GiB)
+
+StreamReader buffer limit in bytes for both TCP and TLS connections. Increase it
+when a complete CoT event, such as an image attachment, exceeds the current limit;
+set a smaller positive value to use a smaller reader limit. This sets a limit rather than allocating the whole buffer at connection
+startup.
+
+```ini
+STREAM_LIMIT = 1048576
+```
+
+---
+
 ### `DEBUG`
 
 **Default:** `0`
